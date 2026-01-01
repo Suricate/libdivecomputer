@@ -36,6 +36,7 @@ Makefile.in
 /doc/doxygen.cfg
 /doc/html/
 /doc/latex/
+/doc/man/*.html
 
 /examples/dctool
 

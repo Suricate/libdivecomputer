@@ -413,6 +413,7 @@ divesystem_idive_parser_samples_foreach (dc_parser_t *abstract, dc_sample_callba
 	unsigned int size = abstract->size;
 
 	unsigned int time = 0;
+	unsigned int time_offset = 0;
 	unsigned int maxdepth = 0;
 	unsigned int ngasmixes = 0;
 	unsigned int ntanks = 0;
@@ -464,6 +465,10 @@ divesystem_idive_parser_samples_foreach (dc_parser_t *abstract, dc_sample_callba
 		unsigned int type = ISIX3M(parser->model) ?
 			array_uint16_le (data + offset + 52) :
 			REC_SAMPLE;
+
+
+
+
 		if (type != REC_SAMPLE) {
 			if (type == REC_INFO) {
 				if (!have_location) {
@@ -483,12 +488,15 @@ divesystem_idive_parser_samples_foreach (dc_parser_t *abstract, dc_sample_callba
 
 		// Time (seconds).
 		unsigned int timestamp = array_uint32_le (data + offset + 2);
-		if (timestamp <= time && time != 0) {
-			ERROR (abstract->context, "Timestamp moved backwards (%u %u).", timestamp, time);
-			return DC_STATUS_DATAFORMAT;
+		
+		// Fix for non-monotonic timestamps (detected on iX3M 2 Pro).
+		// usage: if timestamp resets (e.g. 30 -> 10), we assume a new block and add the previous max time.
+		if (timestamp < time && time != 0) {
+			time_offset += time;
 		}
+		
 		time = timestamp;
-		sample.time = timestamp * 1000;
+		sample.time = (time_offset + timestamp) * 1000;
 		if (callback) callback (DC_SAMPLE_TIME, &sample, userdata);
 
 		// Depth (1/10 m).
